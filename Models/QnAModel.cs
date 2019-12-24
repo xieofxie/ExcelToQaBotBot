@@ -14,6 +14,7 @@ namespace QnABot.Models
         private int resultNumber = 3;
         private float minScore = 0.5f;
         private string noResultResponse = "No QnA Maker answers are found.";
+        private bool debug = false;
 
         public QnAModel()
         {
@@ -94,6 +95,24 @@ namespace QnABot.Models
                 lock (this)
                 {
                     noResultResponse = value;
+                }
+            }
+        }
+
+        public bool Debug
+        {
+            get
+            {
+                lock (this)
+                {
+                    return debug;
+                }
+            }
+            set
+            {
+                lock (this)
+                {
+                    debug = value;
                 }
             }
         }

@@ -14,5 +14,7 @@ namespace QnABot.Models
         public const string SetMinScore = "SetMinScore";
 
         public const string SetNoResultResponse = "SetNoResultResponse";
+
+        public const string SetDebug = "SetDebug";
     }
 }

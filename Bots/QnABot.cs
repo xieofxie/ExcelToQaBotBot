@@ -5,6 +5,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Net.Http;
+using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Bot.Builder;
@@ -70,10 +71,19 @@ namespace Microsoft.BotBuilderSamples
             }
             else
             {
+                var response = new StringBuilder();
                 foreach (var result in results)
                 {
-                    await turnContext.SendActivityAsync(MessageFactory.Text(result.Answer), cancellationToken);
+                    response.Append(result.Answer);
+                    if (_model.Debug)
+                    {
+                        response.AppendLine();
+                        response.Append(result.Score);
+                    }
+
+                    response.AppendLine();
                 }
+                await turnContext.SendActivityAsync(MessageFactory.Text(response.ToString()), cancellationToken);
             }
         }
 
@@ -84,26 +94,44 @@ namespace Microsoft.BotBuilderSamples
                 case QnAEvent.SetMinScore:
                     {
                         _model.MinScore = Convert.ToSingle(turnContext.Activity.Value);
+                        Send(turnContext, $"SetMinScore {_model.MinScore}");
                         break;
                     }
                 case QnAEvent.SetQnA:
                     {
                         _model.QnAs = (turnContext.Activity.Value as JArray).ToObject<List<QnAMakerEndpoint>>();
+                        Send(turnContext, $"SetQnA {_model.QnAs.Count}");
                         break;
                     }
                 case QnAEvent.SetResultNumber:
                     {
                         _model.ResultNumber = Convert.ToInt32(turnContext.Activity.Value);
+                        Send(turnContext, $"SetResultNumber {_model.ResultNumber}");
                         break;
                     }
                 case QnAEvent.SetNoResultResponse:
                     {
                         _model.NoResultResponse = turnContext.Activity.Value.ToString();
+                        Send(turnContext, $"SetNoResultResponse {_model.NoResultResponse}");
+                        break;
+                    }
+                case QnAEvent.SetDebug:
+                    {
+                        _model.Debug = Convert.ToBoolean(turnContext.Activity.Value);
+                        Send(turnContext, $"SetDebug {_model.Debug}");
                         break;
                     }
             }
 
             return Task.CompletedTask;
+        }
+
+        private void Send(ITurnContext context, string debug)
+        {
+            if (_model.Debug)
+            {
+                context.SendActivityAsync(debug);
+            }
         }
     }
 }
