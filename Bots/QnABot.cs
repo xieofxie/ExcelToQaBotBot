@@ -11,11 +11,13 @@ using System.Threading.Tasks;
 using Microsoft.Bot.Builder;
 using Microsoft.Bot.Builder.AI.QnA;
 using Microsoft.Bot.Schema;
+using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata.Internal;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Newtonsoft.Json.Linq;
 using QnABot.Models;
+using QnABot.Responses;
 
 namespace Microsoft.BotBuilderSamples
 {
@@ -64,27 +66,7 @@ namespace Microsoft.BotBuilderSamples
             Task.WaitAll(tasks.ToArray());
 
             var results = tasks.Select(task => task.Result).SelectMany(result => result).OrderByDescending(result => result.Score).Take(resultNumber).ToArray();
-
-            if (results.Length == 0)
-            {
-                await turnContext.SendActivityAsync(MessageFactory.Text(_model.NoResultResponse), cancellationToken);
-            }
-            else
-            {
-                var response = new StringBuilder();
-                foreach (var result in results)
-                {
-                    response.Append(result.Answer);
-                    if (_model.Debug)
-                    {
-                        response.AppendLine();
-                        response.Append(result.Score);
-                    }
-
-                    response.AppendLine();
-                }
-                await turnContext.SendActivityAsync(MessageFactory.Text(response.ToString()), cancellationToken);
-            }
+            await turnContext.SendActivityAsync(Answer.CreateAnswer(_model, results));
         }
 
         protected override Task OnEventAsync(ITurnContext<IEventActivity> turnContext, CancellationToken cancellationToken)
