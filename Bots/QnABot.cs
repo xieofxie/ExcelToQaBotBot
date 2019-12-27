@@ -10,6 +10,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Bot.Builder;
 using Microsoft.Bot.Builder.AI.QnA;
+using Microsoft.Bot.Builder.LanguageGeneration;
 using Microsoft.Bot.Schema;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata.Internal;
@@ -69,7 +70,7 @@ namespace Microsoft.BotBuilderSamples
             await turnContext.SendActivityAsync(Answer.CreateAnswer(_model, results));
         }
 
-        protected override Task OnEventAsync(ITurnContext<IEventActivity> turnContext, CancellationToken cancellationToken)
+        protected override async Task OnEventAsync(ITurnContext<IEventActivity> turnContext, CancellationToken cancellationToken)
         {
             switch (turnContext.Activity.Name)
             {
@@ -91,10 +92,11 @@ namespace Microsoft.BotBuilderSamples
                         Send(turnContext, $"SetResultNumber {_model.ResultNumber}");
                         break;
                     }
-                case QnAEvent.SetNoResultResponse:
+                case QnAEvent.SetAnswerLg:
                     {
-                        _model.NoResultResponse = turnContext.Activity.Value.ToString();
-                        Send(turnContext, $"SetNoResultResponse {_model.NoResultResponse}");
+                        var template = turnContext.Activity.Value.ToString();
+                        _model.SetAnswerLg(template);
+                        Send(turnContext, $"SetAnswerLg {template}");
                         break;
                     }
                 case QnAEvent.SetDebug:
@@ -103,9 +105,45 @@ namespace Microsoft.BotBuilderSamples
                         Send(turnContext, $"SetDebug {_model.Debug}");
                         break;
                     }
-            }
+                case QnAEvent.TestAnswerLg:
+                    {
+                        var template = turnContext.Activity.Value.ToString();
+                        var engine = new TemplateEngine();
+                        engine.AddText(template, importResolver: QnAModel.importResolverDelegate);
+                        var data = new
+                        {
+                            data = new
+                            {
+                                debug = _model.Debug,
+                                results = new List<QueryResult>(),
+                                indices = new List<int>()
+                            }
+                        };
+                        var answer = engine.EvaluateTemplate(Answer.Entrance, data);
+                        var activity = ActivityFactory.CreateActivity(answer);
+                        await turnContext.SendActivityAsync(activity);
 
-            return Task.CompletedTask;
+                        data.data.results.Add(new QueryResult { Answer = "Answer 0" });
+                        data.data.indices.Add(0);
+                        answer = engine.EvaluateTemplate(Answer.Entrance, data);
+                        activity = ActivityFactory.CreateActivity(answer);
+                        await turnContext.SendActivityAsync(activity);
+
+                        var total = _model.ResultNumber;
+                        if (total != 1)
+                        {
+                            for (int i = 1; i < total;++i)
+                            {
+                                data.data.results.Add(new QueryResult { Answer = $"Answer {i}" });
+                                data.data.indices.Add(i);
+                            }
+                            answer = engine.EvaluateTemplate(Answer.Entrance, data);
+                            activity = ActivityFactory.CreateActivity(answer);
+                            await turnContext.SendActivityAsync(activity);
+                        }
+                        break;
+                    }
+            }
         }
 
         private void Send(ITurnContext context, string debug)

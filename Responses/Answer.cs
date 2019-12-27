@@ -12,8 +12,28 @@ namespace QnABot.Responses
 {
     public class Answer
     {
+        public static readonly string Entrance = "CreateAnswer";
+
         public static Activity CreateAnswer(QnAModel model, QueryResult[] results)
         {
+            var engine = model.AnswerLg;
+            if (engine != null)
+            {
+                var data = new
+                {
+                    data = new
+                    {
+                        debug = model.Debug,
+                        results,
+                        // TODO wait for indicesAndValues
+                        indices = Enumerable.Range(0, results.Length).ToArray()
+                    }
+                };
+                var answer = engine.EvaluateTemplate(Answer.Entrance, data);
+                var act = ActivityFactory.CreateActivity(answer);
+                return act;
+            }
+
             var activity = new Activity()
             {
                 Type = ActivityTypes.Message
@@ -21,7 +41,7 @@ namespace QnABot.Responses
 
             if (results.Length == 0)
             {
-                activity.Text = model.NoResultResponse;
+                activity.Text = "No QnA Maker answers are found.";
             }
             else
             {

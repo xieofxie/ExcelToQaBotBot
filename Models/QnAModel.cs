@@ -1,4 +1,5 @@
 ﻿using Microsoft.Bot.Builder.AI.QnA;
+using Microsoft.Bot.Builder.LanguageGeneration;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
@@ -13,8 +14,10 @@ namespace QnABot.Models
         private List<QnAMakerEndpoint> qnAs = new List<QnAMakerEndpoint>();
         private int resultNumber = 3;
         private float minScore = 0.5f;
-        private string noResultResponse = "No QnA Maker answers are found.";
+        private TemplateEngine answerLg;
         private bool debug = false;
+
+        public static readonly ImportResolverDelegate importResolverDelegate = (s, r) => { return (string.Empty, string.Empty); };
 
         public QnAModel()
         {
@@ -81,21 +84,24 @@ namespace QnABot.Models
             }
         }
 
-        public string NoResultResponse
+        public TemplateEngine AnswerLg
         {
             get
             {
                 lock (this)
                 {
-                    return noResultResponse;
+                    return answerLg;
                 }
             }
-            set
+        }
+
+        public void SetAnswerLg(string template)
+        {
+            var engine = new TemplateEngine();
+            engine.AddText(template, importResolver: importResolverDelegate);
+            lock (this)
             {
-                lock (this)
-                {
-                    noResultResponse = value;
-                }
+                answerLg = engine;
             }
         }
 
