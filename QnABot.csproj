@@ -9,6 +9,7 @@
     <PackageReference Include="AdaptiveCards" Version="1.2.4" />
     <PackageReference Include="Microsoft.AspNetCore.App" />
     <PackageReference Include="Microsoft.Bot.Builder.AI.QnA" Version="4.7.0" />
+    <PackageReference Include="Microsoft.Bot.Builder.Azure" Version="4.7.0" />
     <PackageReference Include="Microsoft.Bot.Builder.Dialogs.Adaptive" Version="4.7.0-preview" />
     <PackageReference Include="Microsoft.Bot.Builder.Dialogs.Declarative" Version="4.7.0-preview" />
     <PackageReference Include="Microsoft.Bot.Builder.Integration.AspNet.Core" Version="4.7.0" />

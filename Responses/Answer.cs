@@ -16,14 +16,14 @@ namespace QnABot.Responses
 
         public static Activity CreateAnswer(QnAModel model, QueryResult[] results)
         {
-            var engine = model.AnswerLg;
+            var engine = model.AnswerLg.Get();
             if (engine != null)
             {
                 var data = new
                 {
                     data = new
                     {
-                        debug = model.Debug,
+                        debug = model.Debug.Get(),
                         results,
                         // TODO wait for indicesAndValues
                         indices = Enumerable.Range(0, results.Length).ToArray()
@@ -45,7 +45,7 @@ namespace QnABot.Responses
             }
             else
             {
-                bool debug = model.Debug;
+                bool debug = model.Debug.Get();
 
                 var card = new AdaptiveCard(new AdaptiveSchemaVersion(1, 2));
                 for (int i = 0;i < results.Length;++i)

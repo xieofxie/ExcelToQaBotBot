@@ -6,9 +6,11 @@ using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Bot.Builder;
 using Microsoft.Bot.Builder.AI.QnA;
+using Microsoft.Bot.Builder.Azure;
 using Microsoft.Bot.Builder.BotFramework;
 using Microsoft.Bot.Builder.Integration.AspNet.Core;
 using Microsoft.Bot.Connector.Authentication;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using QnABot.Models;
 using System.Collections.Generic;
@@ -30,6 +32,19 @@ namespace Microsoft.BotBuilderSamples
 
             // Create the Bot Framework Adapter with error handling enabled. 
             services.AddSingleton<IBotFrameworkHttpAdapter, AdapterWithErrorHandler>();
+
+
+            services.AddSingleton<IStorage>(sp =>
+            {
+                var config = sp.GetService<IConfiguration>();
+                var options = config.GetSection("CosmosDb").Get<CosmosDbStorageOptions>();
+                return new CosmosDbStorage(options);
+            });
+
+            services.AddSingleton<BotStateSet>(sp =>
+            {
+                return new BotStateSet();
+            });
 
             services.AddSingleton<QnAModel>();
 

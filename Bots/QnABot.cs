@@ -43,9 +43,9 @@ namespace Microsoft.BotBuilderSamples
 
         protected override async Task OnMessageActivityAsync(ITurnContext<IMessageActivity> turnContext, CancellationToken cancellationToken)
         {
-            var qnAs = _model.QnAs;
-            var resultNumber = _model.ResultNumber;
-            var minScore = _model.MinScore;
+            var qnAs = _model.QnAs.Get();
+            var resultNumber = _model.ResultNumber.Get();
+            var minScore = _model.MinScore.Get();
 
             var tasks = new List<Task<QueryResult[]>>();
 
@@ -76,45 +76,49 @@ namespace Microsoft.BotBuilderSamples
             {
                 case QnAEvent.SetMinScore:
                     {
-                        _model.MinScore = Convert.ToSingle(turnContext.Activity.Value);
-                        Send(turnContext, $"SetMinScore {_model.MinScore}");
+                        var value = Convert.ToSingle(turnContext.Activity.Value);
+                        await _model.MinScore.Set(turnContext, value);
+                        Send(turnContext, $"SetMinScore {value}");
                         break;
                     }
                 case QnAEvent.SetQnA:
                     {
-                        _model.QnAs = (turnContext.Activity.Value as JArray).ToObject<List<QnAMakerEndpoint>>();
-                        Send(turnContext, $"SetQnA {_model.QnAs.Count}");
+                        var value = (turnContext.Activity.Value as JArray).ToObject<List<QnAMakerEndpoint>>();
+                        await _model.QnAs.Set(turnContext, value);
+                        Send(turnContext, $"SetQnA {value.Count}");
                         break;
                     }
                 case QnAEvent.SetResultNumber:
                     {
-                        _model.ResultNumber = Convert.ToInt32(turnContext.Activity.Value);
-                        Send(turnContext, $"SetResultNumber {_model.ResultNumber}");
+                        var value = Convert.ToInt32(turnContext.Activity.Value);
+                        await _model.ResultNumber.Set(turnContext, value);
+                        Send(turnContext, $"SetResultNumber {value}");
                         break;
                     }
                 case QnAEvent.SetAnswerLg:
                     {
                         var template = turnContext.Activity.Value.ToString();
-                        _model.SetAnswerLg(template);
+                        await _model.AnswerLg.Set(turnContext, template);
                         Send(turnContext, $"SetAnswerLg {template}");
                         break;
                     }
                 case QnAEvent.SetDebug:
                     {
-                        _model.Debug = Convert.ToBoolean(turnContext.Activity.Value);
-                        Send(turnContext, $"SetDebug {_model.Debug}");
+                        var value = Convert.ToBoolean(turnContext.Activity.Value);
+                        await _model.Debug.Set(turnContext, value);
+                        Send(turnContext, $"SetDebug {value}");
                         break;
                     }
                 case QnAEvent.TestAnswerLg:
                     {
                         var template = turnContext.Activity.Value.ToString();
                         var engine = new TemplateEngine();
-                        engine.AddText(template, importResolver: QnAModel.importResolverDelegate);
+                        engine.AddText(template, importResolver: ModelPropertyTemplateEngine.importResolverDelegate);
                         var data = new
                         {
                             data = new
                             {
-                                debug = _model.Debug,
+                                debug = _model.Debug.Get(),
                                 results = new List<QueryResult>(),
                                 indices = new List<int>()
                             }
@@ -129,7 +133,7 @@ namespace Microsoft.BotBuilderSamples
                         activity = ActivityFactory.CreateActivity(answer);
                         await turnContext.SendActivityAsync(activity);
 
-                        var total = _model.ResultNumber;
+                        var total = _model.ResultNumber.Get();
                         if (total != 1)
                         {
                             for (int i = 1; i < total;++i)
@@ -148,7 +152,7 @@ namespace Microsoft.BotBuilderSamples
 
         private void Send(ITurnContext context, string debug)
         {
-            if (_model.Debug)
+            if (_model.Debug.Get())
             {
                 context.SendActivityAsync(debug);
             }
