@@ -2,9 +2,8 @@
 using Microsoft.Bot.Builder.AI.QnA;
 using Microsoft.Bot.Builder.LanguageGeneration;
 using QnABot.Utils;
-using System;
 using System.Collections.Generic;
-using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace QnABot.Models
@@ -45,7 +44,7 @@ namespace QnABot.Models
         }
 
         // public static implicit operator TGet(ModelProperty<TGet, TSet> modelProperty) => modelProperty.Get();
-        
+
         public TGet Get()
         {
             lock (this)
@@ -54,10 +53,10 @@ namespace QnABot.Models
             }
         }
 
-        public async Task Set(ITurnContext turnContext, TSet value)
+        public async Task Set(ITurnContext turnContext, TSet value, CancellationToken cancellationToken)
         {
             // TODO do not synchronize
-            await accessor.SetAsync(turnContext, value);
+            await accessor.SetAsync(turnContext, value, cancellationToken);
             var newGet = Convert(value);
             lock (this)
             {
@@ -68,6 +67,7 @@ namespace QnABot.Models
         protected abstract TGet Convert(TSet value);
     }
 
+    // for none reference
     public class ModelPropertySame<T> : ModelProperty<T, T>
     {
         public ModelPropertySame(
@@ -85,20 +85,21 @@ namespace QnABot.Models
         }
     }
 
-    public class ModelPropertyListEndpoint : ModelPropertySame<List<QnAMakerEndpoint>>
+    // must not modify
+    public class ModelPropertyAllEndpoint : ModelProperty<IReadOnlyDictionary<string, QnAMakerEndpointEx>, Dictionary<string, QnAMakerEndpointEx>>
     {
-        public ModelPropertyListEndpoint(
+        public ModelPropertyAllEndpoint(
             IStorage storage,
             BotStateSet botStateSet,
-            List<QnAMakerEndpoint> defaultValue,
+            Dictionary<string, QnAMakerEndpointEx> defaultValue,
             string name)
             : base(storage, botStateSet, defaultValue, name)
         {
         }
 
-        protected override List<QnAMakerEndpoint> Convert(List<QnAMakerEndpoint> value)
+        protected override IReadOnlyDictionary<string, QnAMakerEndpointEx> Convert(Dictionary<string, QnAMakerEndpointEx> value)
         {
-            return new List<QnAMakerEndpoint>(value);
+            return value;
         }
     }
 

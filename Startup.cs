@@ -4,6 +4,7 @@
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Azure.CognitiveServices.Knowledge.QnAMaker;
 using Microsoft.Bot.Builder;
 using Microsoft.Bot.Builder.AI.QnA;
 using Microsoft.Bot.Builder.Azure;
@@ -44,6 +45,28 @@ namespace Microsoft.BotBuilderSamples
             services.AddSingleton<BotStateSet>(sp =>
             {
                 return new BotStateSet();
+            });
+
+            services.AddTransient<QnAMakerClient>(sp =>
+            {
+                var config = sp.GetService<IConfiguration>();
+                var key = config.GetSection("SubscriptionKey").Value;
+                return new QnAMakerClient(new ApiKeyServiceClientCredentials(key)) { Endpoint = "https://westus.api.cognitive.microsoft.com" };
+            });
+            services.AddTransient<Knowledgebase>();
+            services.AddTransient<Operations>();
+
+            // For creating
+            services.AddSingleton<QnAMakerEndpoint>(sp =>
+            {
+                var config = sp.GetService<IConfiguration>();
+                var key = config.GetSection("EndpointKey").Value;
+                var host = config.GetSection("Host").Value;
+                return new QnAMakerEndpoint
+                {
+                    EndpointKey = key,
+                    Host = host
+                };
             });
 
             services.AddSingleton<QnAModel>();

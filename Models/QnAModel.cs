@@ -17,16 +17,17 @@ namespace QnABot.Models
             IStorage storage,
             BotStateSet botStateSet)
         {
-            ResultNumber = new ModelPropertySame<int>(storage, botStateSet, 3, "resultNumber");
-            QnAs = new ModelPropertyListEndpoint(storage, botStateSet, new List<QnAMakerEndpoint>(), "qnAs");
+            // TODO when saved to cosmos, it is long and can't be cast to int
+            ResultNumber = new ModelPropertySame<long>(storage, botStateSet, 3L, "resultNumber");
+            QnAs = new ModelPropertyAllEndpoint(storage, botStateSet, new Dictionary<string, QnAMakerEndpointEx>(), "qnAs");
             MinScore = new ModelPropertySame<float>(storage, botStateSet, 0.5f, "minScore");
             AnswerLg = new ModelPropertyTemplateEngine(storage, botStateSet, null, "answerLg");
-            Debug = new ModelPropertySame<bool>(storage, botStateSet, false, "debug");
+            Debug = new ModelPropertySame<bool>(storage, botStateSet, !false, "debug");
         }
 
-        public ModelPropertySame<int> ResultNumber { get; set; }
+        public ModelPropertySame<long> ResultNumber { get; set; }
 
-        public ModelPropertyListEndpoint QnAs { get; set; }
+        public ModelPropertyAllEndpoint QnAs { get; set; }
 
         public ModelPropertySame<float> MinScore { get; set; }
 

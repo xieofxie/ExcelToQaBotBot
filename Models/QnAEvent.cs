@@ -7,16 +7,33 @@ namespace QnABot.Models
 {
     public class QnAEvent
     {
-        public const string SetQnA = "SetQnA";
+        // QnA
+        public const string GetQnA = "GetQnA";
+
+        public const string EnableQnA = "EnableQnA";
+
+        public const string CreateQnA = "CreateQnA";
+
+        public const string AddQnA = "AddQnA";
+
+        public const string DelQnA = "DelQnA";
+
+        // Source
+        public const string AddSource = "AddSource";
+
+        public const string DelSource = "DelSource";
+
+        // Configs
+        public const string SetMinScore = "SetMinScore";
 
         public const string SetResultNumber = "SetResultNumber";
 
-        public const string SetMinScore = "SetMinScore";
-
+        // Answer Lg
         public const string SetAnswerLg = "SetAnswerLg";
 
-        public const string SetDebug = "SetDebug";
-
         public const string TestAnswerLg = "TestAnswerLg";
+
+        // Others
+        public const string SetDebug = "SetDebug";
     }
 }
