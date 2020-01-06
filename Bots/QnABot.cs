@@ -98,7 +98,7 @@ namespace Microsoft.BotBuilderSamples
                     }
                 case QnAEvent.EnableQnA:
                     {
-                        var value = (turnContext.Activity.Value as JObject).ToObject<EnableQnAEvent>();
+                        var value = (turnContext.Activity.Value as JObject).ToObject<QnAMakerEndpointEx>();
                         var qnA = new Dictionary<string, QnAMakerEndpointEx>(_model.QnAs.Get());
                         qnA[value.KnowledgeBaseId].Enable = value.Enable;
                         await _model.QnAs.Set(turnContext, qnA, cancellationToken);
@@ -111,7 +111,7 @@ namespace Microsoft.BotBuilderSamples
                     {
                         var value = (turnContext.Activity.Value as JObject).ToObject<CreateKbDTO>();
                         var operation = await _knowledgebase.CreateAsync(value, cancellationToken);
-                        await WaitForOperation(operation, QnAEvent.CreateQnA, cancellationToken);
+                        operation = await WaitForOperation(operation, QnAEvent.CreateQnA, cancellationToken);
 
                         var id = operation.ResourceLocation.Split('/')[2];
                         var ex = new QnAMakerEndpointEx
@@ -120,7 +120,8 @@ namespace Microsoft.BotBuilderSamples
                             Host = _qnAMakerEndpoint.Host,
                             EndpointKey = _qnAMakerEndpoint.EndpointKey,
                             Name = value.Name,
-                            Enable = false
+                            Enable = false,
+                            Sources = new Dictionary<string, Source>(),
                         };
                         await HandleAddQnA(turnContext, ex, cancellationToken);
 
@@ -137,11 +138,27 @@ namespace Microsoft.BotBuilderSamples
                     }
                 case QnAEvent.DelQnA:
                     {
-                        var value = (turnContext.Activity.Value as JObject).ToObject<QnAMakerEndpointEx>();
+                        var value = (turnContext.Activity.Value as JObject).ToObject<QnAMakerEndpoint>();
+                        await _knowledgebase.DeleteAsync(value.KnowledgeBaseId, cancellationToken);
+
                         var qnA = new Dictionary<string, QnAMakerEndpointEx>(_model.QnAs.Get());
                         qnA.Remove(value.KnowledgeBaseId);
                         await _model.QnAs.Set(turnContext, qnA, cancellationToken);
                         await SendDebug(turnContext, $"{QnAEvent.DelQnA} {value.KnowledgeBaseId}", cancellationToken);
+
+                        await HandleGetQnA(turnContext, cancellationToken);
+                        break;
+                    }
+                case QnAEvent.UpdateQnA:
+                    {
+                        var value = (turnContext.Activity.Value as JObject).ToObject<QnAMakerEndpointEx>();
+                        var operation = await _knowledgebase.UpdateAsync(value.KnowledgeBaseId, new UpdateKbOperationDTO(update: new UpdateKbOperationDTOUpdate(value.Name)), cancellationToken);
+                        await WaitForOperation(operation, QnAEvent.UpdateQnA, cancellationToken);
+                        await SendDebug(turnContext, $"{QnAEvent.UpdateQnA} {value.Name}", cancellationToken);
+
+                        var qnA = new Dictionary<string, QnAMakerEndpointEx>(_model.QnAs.Get());
+                        qnA[value.KnowledgeBaseId].Name = value.Name;
+                        await _model.QnAs.Set(turnContext, qnA, cancellationToken);
 
                         await HandleGetQnA(turnContext, cancellationToken);
                         break;
@@ -267,7 +284,7 @@ namespace Microsoft.BotBuilderSamples
             }
         }
 
-        private async Task WaitForOperation(Operation operation, string name, CancellationToken cancellationToken)
+        private async Task<Operation> WaitForOperation(Operation operation, string name, CancellationToken cancellationToken)
         {
             while (operation.OperationState == OperationStateType.NotStarted || operation.OperationState == OperationStateType.Running)
             {
@@ -278,6 +295,7 @@ namespace Microsoft.BotBuilderSamples
             {
                 throw new Exception($"{name} failed!");
             }
+            return operation;
         }
 
         private async Task HandleAddQnA(ITurnContext<IEventActivity> turnContext, QnAMakerEndpointEx value, CancellationToken cancellationToken)

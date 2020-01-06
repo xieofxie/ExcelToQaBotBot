@@ -18,6 +18,8 @@ namespace QnABot.Models
 
         public const string DelQnA = "DelQnA";
 
+        public const string UpdateQnA = "UpdateQnA";
+
         // Source
         public const string AddSource = "AddSource";
 
