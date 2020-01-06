@@ -153,7 +153,7 @@ namespace Microsoft.BotBuilderSamples
                     {
                         var value = (turnContext.Activity.Value as JObject).ToObject<QnAMakerEndpointEx>();
                         var operation = await _knowledgebase.UpdateAsync(value.KnowledgeBaseId, new UpdateKbOperationDTO(update: new UpdateKbOperationDTOUpdate(value.Name)), cancellationToken);
-                        await WaitForOperation(operation, QnAEvent.UpdateQnA, cancellationToken);
+                        operation = await WaitForOperation(operation, QnAEvent.UpdateQnA, cancellationToken);
                         await SendDebug(turnContext, $"{QnAEvent.UpdateQnA} {value.Name}", cancellationToken);
 
                         var qnA = new Dictionary<string, QnAMakerEndpointEx>(_model.QnAs.Get());
@@ -164,14 +164,16 @@ namespace Microsoft.BotBuilderSamples
                         break;
                     }
                 // Source
-                // TODO also update
-                // TODO only Editorial
+                // TODO if same, will delete first
                 case QnAEvent.AddSource:
                     {
                         var value = (turnContext.Activity.Value as JObject).ToObject<SourceEvent>();
-                        foreach (var qna in value.QnaList)
+                        if (value.Type == SourceType.Editorial)
                         {
-                            qna.Source = value.Id;
+                            foreach (var qna in value.DTOAdd.QnaList)
+                            {
+                                qna.Source = value.Id;
+                            }
                         }
 
                         var qnA = new Dictionary<string, QnAMakerEndpointEx>(_model.QnAs.Get());
@@ -180,11 +182,8 @@ namespace Microsoft.BotBuilderSamples
                             await HandleDelSource(turnContext, value, cancellationToken);
                         }
 
-                        var operation = await _knowledgebase.UpdateAsync(value.KnowledgeBaseId, new UpdateKbOperationDTO(new UpdateKbOperationDTOAdd
-                        {
-                            QnaList = value.QnaList
-                        }), cancellationToken);
-                        await WaitForOperation(operation, QnAEvent.AddSource, cancellationToken);
+                        var operation = await _knowledgebase.UpdateAsync(value.KnowledgeBaseId, new UpdateKbOperationDTO(value.DTOAdd), cancellationToken);
+                        operation = await WaitForOperation(operation, QnAEvent.AddSource, cancellationToken);
 
                         await _knowledgebase.PublishAsync(value.KnowledgeBaseId, cancellationToken);
 
@@ -327,7 +326,7 @@ namespace Microsoft.BotBuilderSamples
             {
                 Sources = new string[] { value.Id }
             }), cancellationToken);
-            await WaitForOperation(operation, QnAEvent.DelSource, cancellationToken);
+            operation = await WaitForOperation(operation, QnAEvent.DelSource, cancellationToken);
 
             var qnA = new Dictionary<string, QnAMakerEndpointEx>(_model.QnAs.Get());
             qnA[value.KnowledgeBaseId].Sources.Remove(value.Id);

@@ -10,6 +10,6 @@ namespace QnABot.Models
     {
         public string KnowledgeBaseId { get; set; }
 
-        public List<QnADTO> QnaList { get; set; }
+        public UpdateKbOperationDTOAdd DTOAdd { get; set; }
     }
 }
