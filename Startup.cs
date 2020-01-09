@@ -88,7 +88,7 @@ namespace Microsoft.BotBuilderSamples
                 options.AddPolicy("Localhost",
                     builder =>
                     {
-                        builder.WithOrigins("http://localhost:3000", "http://localhost:3001")
+                        builder.WithOrigins("*")
                                             .AllowAnyHeader()
                                             .AllowAnyMethod();
                     });

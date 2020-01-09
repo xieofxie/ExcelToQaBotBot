@@ -3,6 +3,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Net.Http;
 using System.Text;
@@ -167,43 +168,88 @@ namespace Microsoft.BotBuilderSamples
                 // TODO if same, will delete first
                 case QnAEvent.AddSource:
                     {
-                        var value = (turnContext.Activity.Value as JObject).ToObject<SourceEvent>();
-                        if (value.Type == SourceType.Editorial)
+                        var value = (turnContext.Activity.Value as JObject).ToObject<AddSourceEvent>();
+                        if (value.QnaList != null)
                         {
-                            foreach (var qna in value.DTOAdd.QnaList)
+                            foreach (var qna in value.QnaList)
                             {
-                                qna.Source = value.Id;
+                                qna.Source = value.QnaListId;
                             }
                         }
 
-                        var qnA = new Dictionary<string, QnAMakerEndpointEx>(_model.QnAs.Get());
-                        if (qnA[value.KnowledgeBaseId].Sources.ContainsKey(value.Id))
+                        // Handle del
+                        var thisSource = _model.QnAs.Get()[value.KnowledgeBaseId].Sources;
+                        var toDel = new List<string>();
+                        if (!string.IsNullOrEmpty(value.QnaListId) && thisSource.ContainsKey(value.QnaListId))
                         {
-                            await HandleDelSource(turnContext, value, cancellationToken);
+                            toDel.Add(value.QnaListId);
+                        }
+                        if (value.Urls != null)
+                        {
+                            foreach (var url in value.Urls)
+                            {
+                                if (thisSource.ContainsKey(url))
+                                {
+                                    toDel.Add(url);
+                                }
+                            }
+                        }
+                        if (value.Files != null)
+                        {
+                            foreach (var file in value.Files)
+                            {
+                                if (thisSource.ContainsKey(file.FileName))
+                                {
+                                    toDel.Add(file.FileName);
+                                }
+                            }
+                        }
+                        if (toDel.Count > 0)
+                        {
+                            await HandleDelSource(turnContext, new DelSourceEvent { KnowledgeBaseId = value.KnowledgeBaseId, Ids = toDel }, cancellationToken);
                         }
 
-                        var operation = await _knowledgebase.UpdateAsync(value.KnowledgeBaseId, new UpdateKbOperationDTO(value.DTOAdd), cancellationToken);
+                        var operation = await _knowledgebase.UpdateAsync(value.KnowledgeBaseId, new UpdateKbOperationDTO(value), cancellationToken);
                         operation = await WaitForOperation(operation, QnAEvent.AddSource, cancellationToken);
 
                         await _knowledgebase.PublishAsync(value.KnowledgeBaseId, cancellationToken);
 
-                        qnA = new Dictionary<string, QnAMakerEndpointEx>(_model.QnAs.Get());
-                        var source = new Source
+                        var qnA = new Dictionary<string, QnAMakerEndpointEx>(_model.QnAs.Get());
+                        thisSource = qnA[value.KnowledgeBaseId].Sources;
+                        var sb = new StringBuilder();
+                        void AddToSource(string Id, string Description, SourceType type)
                         {
-                            Id = value.Id,
-                            Description = value.Description,
-                            Type = value.Type
-                        };
-                        qnA[value.KnowledgeBaseId].Sources.Add(source.Id, source);
+                            var source = new Source
+                            {
+                                Id = Id,
+                                Description = Description,
+                                Type = type
+                            };
+                            thisSource.Add(source.Id, source);
+                            sb.Append(source.Id);
+                            sb.Append(' ');
+                        }
+                        if (!string.IsNullOrEmpty(value.QnaListId))
+                        {
+                            AddToSource(value.QnaListId, value.QnaListDescription, SourceType.Editorial);
+                        }
+                        for (int i = 0;i < value.Urls?.Count;++i)
+                        {
+                            AddToSource(value.Urls[i], value.UrlsDescription[i], SourceType.Url);
+                        }
+                        for (int i = 0;i < value.Files?.Count;++i)
+                        {
+                            AddToSource(value.Files[i].FileName, value.FilesDescription[i], SourceType.File);
+                        }
                         await _model.QnAs.Set(turnContext, qnA, cancellationToken);
-                        await SendDebug(turnContext, $"{QnAEvent.AddSource} {value.Id}", cancellationToken);
+                        await SendDebug(turnContext, $"{QnAEvent.AddSource} {sb.ToString()}", cancellationToken);
 
                         await HandleGetQnA(turnContext, cancellationToken);
                         break;
                     }
                 case QnAEvent.DelSource:
                     {
-                        var value = (turnContext.Activity.Value as JObject).ToObject<SourceEvent>();
+                        var value = (turnContext.Activity.Value as JObject).ToObject<DelSourceEvent>();
                         await HandleDelSource(turnContext, value, cancellationToken);
 
                         await _knowledgebase.PublishAsync(value.KnowledgeBaseId, cancellationToken);
@@ -320,19 +366,22 @@ namespace Microsoft.BotBuilderSamples
             await SendDebug(turnContext, $"{QnAEvent.GetQnA} {value.Count}", cancellationToken);
         }
 
-        private async Task HandleDelSource(ITurnContext<IEventActivity> turnContext, SourceEvent value, CancellationToken cancellationToken)
+        private async Task HandleDelSource(ITurnContext<IEventActivity> turnContext, DelSourceEvent value, CancellationToken cancellationToken)
         {
             var operation = await _knowledgebase.UpdateAsync(value.KnowledgeBaseId, new UpdateKbOperationDTO(delete: new UpdateKbOperationDTODelete
             {
-                Sources = new string[] { value.Id }
+                Sources = value.Ids
             }), cancellationToken);
             operation = await WaitForOperation(operation, QnAEvent.DelSource, cancellationToken);
 
             var qnA = new Dictionary<string, QnAMakerEndpointEx>(_model.QnAs.Get());
-            qnA[value.KnowledgeBaseId].Sources.Remove(value.Id);
+            foreach(var id in value.Ids)
+            {
+                qnA[value.KnowledgeBaseId].Sources.Remove(id);
+            }
             await _model.QnAs.Set(turnContext, qnA, cancellationToken);
 
-            await SendDebug(turnContext, $"{QnAEvent.DelSource} {value.Id}", cancellationToken);
+            await SendDebug(turnContext, $"{QnAEvent.DelSource} {value.Ids.Aggregate((string a, string b) => { return $"{a} {b}"; } )}", cancellationToken);
         }
 
         private async Task SendDebug(ITurnContext context, string debug, CancellationToken cancellationToken)
